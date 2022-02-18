@@ -1,0 +1,44 @@
+name: Create Release
+
+on:
+  repository_dispatch:
+    types: [build_application]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    env:
+      version: ${{ github.event.client_payload.version }}
+    
+    steps:
+      - name: Download artifact
+        uses: dawidd6/action-download-artifact@v2
+        with:
+          github_token: ${{secrets.SYNTROPY_TOKEN}}
+          workflow: pipelines.yml
+          run_id: ${{ github.event.client_payload.run_id }}
+          repo: SyntropyNet/windows-app
+          
+      - name: Create Release
+        uses: actions/create-release@v1
+        id: create_release
+        env:
+          GITHUB_TOKEN: ${{secrets.SYNTROPY_TOKEN}}
+        with:
+          draft: false
+          prerelease: false
+          release_name: Release ${{ github.event.client_payload.tag }}
+          tag_name: ${{ github.event.client_payload.tag }}
+          body_path: README.md
+          
+      - name: Upload Release Asset
+        id: upload-release-asset 
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{secrets.SYNTROPY_TOKEN}}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }} 
+          asset_path: MSIX Package/SyntropyNet.WindowsApp.MsixInstaller_${{ env.version }}.0_Test/SyntropyNet.WindowsApp.MsixInstaller_${{ env.version }}.0_x86_x64.appxbundle
+          asset_name: Syntropy_Windows_${{ env.version }}.appxbundle
+          asset_content_type: application/appxbundle
